@@ -1,0 +1,130 @@
+# =============================================================================
+# monitoring/k8s/values.yaml
+# Helm values for prometheus-community/kube-prometheus-stack on k3s.
+#
+# Install:
+#   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+#   helm repo add grafana https://grafana.github.io/helm-charts
+#   helm repo update
+#   kubectl create namespace monitoring
+#   helm install kube-prom-stack prometheus-community/kube-prometheus-stack \
+#     --namespace monitoring -f monitoring/k8s/values.yaml --wait --timeout 10m
+# =============================================================================
+
+prometheus:
+  prometheusSpec:
+    retention: 30d
+    retentionSize: '10GB'
+    replicas: 1
+    scrapeInterval: '15s'
+    evaluationInterval: '15s'
+
+    externalLabels:
+      cluster: 'telco-churn-k3s'
+      env: 'production'
+
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: local-path   # k3s default StorageClass
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 10Gi
+
+    # Watch ServiceMonitors/PodMonitors/PrometheusRules in ALL namespaces,
+    # not only ones created by this Helm release.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+    # Manually scraped target as a fallback / example.
+    additionalScrapeConfigs:
+      - job_name: 'churn-api-manual'
+        static_configs:
+          - targets: ['churn-api.mlops:8000']
+
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: local-path
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 1Gi
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      group_by: ['alertname']
+      receiver: 'slack-mlops'
+    receivers:
+      - name: 'slack-mlops'
+        slack_configs:
+          - api_url: 'https://hooks.slack.com/services/T.../B.../...'
+            channel: '#mlops-alerts'
+            send_resolved: true
+
+nodeExporter:
+  enabled: true
+
+kubeStateMetrics:
+  enabled: true
+
+# k3s doesn't expose these as standard kube-system components the way
+# kubeadm clusters do -- disable, or the corresponding scrape targets sit
+# permanently "down" and clutter alerts/dashboards.
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeEtcd:
+  enabled: false
+
+defaultRules:
+  create: true
+  rules:
+    alertmanager: true
+    etcd: false          # not applicable on k3s
+    k8s: true
+    kubePrometheusNodeAlerting: true
+
+grafana:
+  enabled: true
+  adminPassword: 'mlops-secure-pass'
+
+  persistence:
+    enabled: true
+    storageClassName: local-path
+    size: 2Gi
+
+  # ── This is the piece that actually makes dashboards/datasources appear ──
+  # The chart runs a sidecar container that watches for ConfigMaps carrying
+  # these labels and drops their contents into Grafana's provisioning dirs.
+  # Without matching ConfigMaps (see grafana-dashboards-configmap.yaml),
+  # Grafana starts up with an empty dashboard folder, same failure mode as
+  # the folder-name mismatch in docker-compose.
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      folder: /tmp/dashboards
+      searchNamespace: ALL
+    datasources:
+      enabled: true
+      label: grafana_datasource
+      labelValue: "1"
+
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      access: proxy
+      url: http://loki.monitoring:3100
+
+  grafana.ini:
+    feature_toggles:
+      enable: correlations

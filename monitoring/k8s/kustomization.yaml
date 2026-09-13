@@ -1,0 +1,27 @@
+# =============================================================================
+# monitoring/k8s/kustomization.yaml
+# Wraps monitoring/grafana/dashboards/*.json into ConfigMaps labeled
+# grafana_dashboard=1, which the kube-prometheus-stack Grafana sidecar
+# (enabled in values.yaml) watches for and auto-imports.
+#
+# Apply:
+#   kubectl apply -k monitoring/k8s -n monitoring
+# =============================================================================
+namespace: monitoring
+
+configMapGenerator:
+  - name: grafana-dashboard-ml-model
+    files:
+      - ../grafana/dashboards/ml_model.json
+    options:
+      labels:
+        grafana_dashboard: "1"
+      disableNameSuffixHash: true
+
+  - name: grafana-dashboard-api-performance
+    files:
+      - ../grafana/dashboards/api_performance.json
+    options:
+      labels:
+        grafana_dashboard: "1"
+      disableNameSuffixHash: true

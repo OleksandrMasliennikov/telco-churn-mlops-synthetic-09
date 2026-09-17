@@ -20,6 +20,7 @@ from src.metrics import (
     PREDICTION_CONFIDENCE,
     generate_latest,
     CONTENT_TYPE_LATEST,
+    HIGH_RISK_PREDICTIONS,
 )
 
 from src.api.models import CustomerFeatures, PredictionResponse
@@ -113,6 +114,9 @@ def predict(features: CustomerFeatures):
 
         churn_prob = result["churn_probability"]
         outcome    = "churn" if result["churn_prediction"] == 1 else "no_churn"
+        # Custom metric: high-risk churn predictions
+        if churn_prob > 0.8:
+            HIGH_RISK_PREDICTIONS.inc()
 
         # Основний лічильник
         PREDICTIONS_TOTAL.labels(

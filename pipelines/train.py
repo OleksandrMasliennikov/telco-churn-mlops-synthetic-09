@@ -141,7 +141,13 @@ def main():
 		print('Error: target column "Churn" not found in data', file=sys.stderr)
 		sys.exit(2)
 
-	X = df.drop('Churn', axis=1)
+#	X = df.drop('Churn', axis=1)
+#	y = df['Churn'].map({'Yes': 1, 'No': 0})
+	X = df.drop(
+	columns=['Churn', 'customerID', 'RecordDate'],
+	errors='ignore',
+	)
+
 	y = df['Churn'].map({'Yes': 1, 'No': 0})
 
 	model = build_pipeline(X)

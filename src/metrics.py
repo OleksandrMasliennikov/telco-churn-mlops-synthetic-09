@@ -18,7 +18,7 @@ Prometheus metrics для telco-churn-mlops-synthetic-07.
            PREDICTIONS_TOTAL, PREDICTION_LATENCY, MODEL_ACCURACY,
            API_REQUESTS_TOTAL, REQUEST_DURATION, ACTIVE_CONNECTIONS,
            NULL_FEATURES_TOTAL, MODEL_LOAD_TIME, ACTIVE_MODEL_VERSION,
-           generate_latest, CONTENT_TYPE_LATEST,
+           generate_latest, CONTENT_TYPE_LATEST, HIGH_RISK_PREDICTIONS,
        )
        # ... і /metrics endpoint (div. app_patch_example.py)
 
@@ -44,6 +44,11 @@ PREDICTIONS_TOTAL = Counter(
     ["model_version", "outcome", "contract_type"],
     # outcome:       churn | no_churn | error
     # contract_type: Month-to-month | One year | Two year | Unknown
+)
+
+HIGH_RISK_PREDICTIONS = Counter(
+    "high_risk_predictions_total",
+    "Number of predictions with churn probability greater than 0.8",
 )
 
 PREDICTION_LATENCY = Histogram(

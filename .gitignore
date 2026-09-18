@@ -214,3 +214,4 @@ models/churn_model.pkl
 results/
 data/telco_customers_drifted.csv
 data/churn_explanations.json
+mlflow_db/mlflow.db
